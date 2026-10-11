@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#050607">
+<meta name="description" content="Axiom Quant. Firma privada de inversión cuantitativa y algorítmica en criptoactivos.">
+<title>Axiom Quant — Arquitectura cuantitativa de trading</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+:root{--negro:#050607;--superficie:rgba(24,28,29,.66);--borde:rgba(255,255,255,.09);--borde-fuerte:rgba(255,255,255,.16);--texto:#f3f5f4;--texto-suave:#c4ccca;--texto-apagado:#75807d;--esmeralda:#10b981;--esmeralda-clara:#5ee7b7;--cian:#06b6d4;--rojo:#ef6f6f;--radio:20px;--contenedor:1240px;--transicion:cubic-bezier(.22,.8,.24,1)}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;background:var(--negro)}
+body{margin:0;overflow-x:hidden;color:var(--texto);background:var(--negro);font-family:"Space Grotesk",system-ui,sans-serif;font-size:17px;line-height:1.7}
+body::before{content:"";position:fixed;inset:0;z-index:8;pointer-events:none;opacity:.06;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 160 160' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.45'/%3E%3C/svg%3E");mix-blend-mode:screen}
+body::after{content:"";position:fixed;inset:0;z-index:7;pointer-events:none;background:radial-gradient(ellipse at center,transparent 30%,rgba(0,0,0,.55) 100%)}
+a{color:inherit;text-decoration:none}
+button,summary{font:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--esmeralda);outline-offset:4px}
+.enlace-saltar{position:absolute;left:12px;top:-60px;z-index:200;padding:10px 14px;background:var(--esmeralda);color:#000;border-radius:6px;font-size:13px}
+.enlace-saltar:focus{top:12px}
+.contenedor{position:relative;width:min(calc(100% - 40px),var(--contenedor));margin-inline:auto}
+.mono{font-family:"JetBrains Mono",monospace}
+.texto-apagado{color:var(--texto-apagado)}
+.etiqueta{color:var(--esmeralda);font:500 11px/1.2 "JetBrains Mono",monospace;letter-spacing:.13em;text-transform:uppercase}
+.webgl-fondo{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.76;width:100%;height:100%}
+.velo-fondo{position:fixed;inset:0;z-index:1;pointer-events:none;background:linear-gradient(180deg,rgba(5,6,7,.34),rgba(5,6,7,.68)),radial-gradient(ellipse at 50% 12%,transparent 0%,rgba(5,6,7,.3) 55%,rgba(5,6,7,.82) 100%)}
+main,header,footer{position:relative;z-index:2}
+.arranque{position:fixed;inset:0;z-index:100;display:grid;place-items:center;background:var(--negro);transition:opacity .6s var(--transicion),visibility .6s}
+.arranque.oculto{opacity:0;visibility:hidden;pointer-events:none}
+.arranque-consola{width:min(500px,calc(100% - 48px));color:var(--texto-apagado);font:12px/2 "JetBrains Mono",monospace}
+.arranque-consola p{margin:0;opacity:0;animation:consola .45s var(--transicion) forwards}
+.arranque-consola p:nth-child(2){animation-delay:.22s}
+.arranque-consola p:nth-child(3){animation-delay:.44s;color:var(--esmeralda)}
+@keyframes consola{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:translateX(0)}}
+.barra{position:fixed;top:0;left:0;right:0;z-index:20;padding-top:env(safe-area-inset-top,0px);border-bottom:1px solid transparent;background:rgba(5,6,7,.25);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);transition:background .4s var(--transicion),border-color .4s var(--transicion)}
+.barra.scrolled{border-color:var(--borde);background:rgba(5,6,7,.84)}
+.barra-interior{display:flex;align-items:center;justify-content:space-between;min-height:76px;gap:24px}
+.marca{display:inline-flex;align-items:center;gap:11px;flex-shrink:0;font:600 13px/1 "Space Grotesk",sans-serif;letter-spacing:.24em}
+.marca svg{width:30px;height:30px;color:var(--esmeralda)}
+.navegacion{display:flex;align-items:center;gap:clamp(16px,2.8vw,38px);margin-left:auto}
+.navegacion a,.enlace-subrayado{position:relative;color:var(--texto-suave);font-size:13px}
+.navegacion a::after,.enlace-subrayado::after{content:"";position:absolute;right:0;bottom:-5px;left:0;height:1px;background:var(--esmeralda);transform:scaleX(0);transform-origin:left;transition:transform .35s var(--transicion)}
+.navegacion a:hover::after,.enlace-subrayado:hover::after{transform:scaleX(1)}
+.portal{position:relative;min-height:46px;padding:0 17px;border:1px solid rgba(16,185,129,.55);border-radius:7px;color:var(--esmeralda-clara);background:rgba(16,185,129,.045);font-size:12px;white-space:nowrap;transition:transform .25s var(--transicion),border-color .25s;animation:pulso-borde 4s ease-in-out infinite}
+.portal:hover{cursor:not-allowed;border-color:var(--esmeralda)}
+.portal.sacudir{animation:sacudir .34s ease,pulso-borde 4s ease-in-out infinite}
+.portal-denegado{position:absolute;top:calc(100% + 9px);right:0;opacity:0;color:var(--rojo);font:11px "JetBrains Mono",monospace;pointer-events:none;transition:opacity .2s}
+.portal-denegado.visible{opacity:1}
+@keyframes pulso-borde{0%,100%{box-shadow:0 0 0 rgba(16,185,129,0)}50%{box-shadow:0 0 22px rgba(16,185,129,.12)}}
+@keyframes sacudir{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}50%{transform:translateX(5px)}75%{transform:translateX(-3px)}}
+.menu-movil{display:none;width:44px;height:44px;border:1px solid var(--borde);border-radius:8px;color:var(--texto);background:transparent}
+.hero{display:flex;align-items:center;min-height:100svh;padding:210px 0 120px}
+.hero-grid{display:grid;grid-template-columns:minmax(0,1fr) 260px;align-items:center;gap:40px}
+.estado{display:inline-flex;align-items:center;gap:9px;width:max-content;max-width:100%;padding:7px 12px;border:1px solid rgba(16,185,129,.28);border-radius:99px;color:var(--esmeralda-clara);background:rgba(16,185,129,.06);font:11px "JetBrains Mono",monospace;opacity:0;transform:translateY(10px)}
+.estado.visible{opacity:1;transform:translateY(0);transition:opacity .7s var(--transicion),transform .7s var(--transicion)}
+.punto{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--esmeralda);box-shadow:0 0 12px var(--esmeralda);animation:parpadeo 1.5s ease-in-out infinite}
+@keyframes parpadeo{50%{opacity:.28}}
+h1{max-width:900px;margin:48px 0 40px;font-size:clamp(3.6rem,10vw,9.5rem);font-weight:600;letter-spacing:-.06em;line-height:.98}
+.linea-titulo{display:block;width:max-content;max-width:100%;padding-bottom:.12em;clip-path:inset(0 100% 0 0);filter:blur(8px)}
+.linea-titulo.revelada{clip-path:inset(0 0 0 0);filter:blur(0);transition:clip-path 1s var(--transicion),filter 1s var(--transicion)}
+.linea-titulo:last-child{color:transparent;-webkit-text-fill-color:transparent;background:linear-gradient(100deg,var(--esmeralda-clara),var(--cian));background-clip:text;-webkit-background-clip:text}
+.subtitulo{min-height:32px;margin:0;color:var(--texto-suave);font-size:clamp(1rem,2vw,1.25rem)}
+.cursor-escritura{display:inline-block;width:7px;height:1.1em;margin-left:5px;vertical-align:-.18em;background:var(--esmeralda);animation:parpadeo .8s steps(1) infinite}
+.hora-panel{align-self:end;padding:18px;border-left:1px solid var(--esmeralda);background:linear-gradient(90deg,rgba(16,185,129,.08),transparent);opacity:0;transform:translateX(15px);transition:opacity .8s .5s var(--transicion),transform .8s .5s var(--transicion)}
+.hora-panel.visible{opacity:1;transform:translateX(0)}
+.hora{display:block;margin:5px 0 12px;color:var(--texto);font:18px "JetBrains Mono",monospace}
+.pista{display:flex;align-items:center;gap:13px;margin-top:90px;color:var(--texto-apagado);font:10px "JetBrains Mono",monospace;letter-spacing:.12em;text-transform:uppercase}
+.pista::before{content:"";display:block;width:60px;height:1px;background:linear-gradient(90deg,var(--esmeralda),transparent)}
+.cinta{position:relative;z-index:3;overflow:hidden;border-top:1px solid var(--borde);border-bottom:1px solid var(--borde);background:rgba(9,13,13,.72);-webkit-mask-image:linear-gradient(90deg,transparent,#000 9%,#000 91%,transparent);mask-image:linear-gradient(90deg,transparent,#000 9%,#000 91%,transparent)}
+.cinta:hover .cinta-contenido{animation-play-state:paused}
+.cinta-contenido{display:flex;width:max-content;padding:15px 0;animation:desplazamiento 38s linear infinite}
+.dato-cinta{padding:0 24px;color:var(--texto-apagado);font:11px "JetBrains Mono",monospace;white-space:nowrap}
+.dato-cinta b{color:var(--esmeralda-clara);font-weight:500}
+@keyframes desplazamiento{to{transform:translateX(-50%)}}
+section{padding:150px 0}
+.cabecera-seccion{display:grid;grid-template-columns:.8fr 1.2fr;gap:50px;margin-bottom:65px}
+.cabecera-seccion h2{margin:0;font-size:clamp(2.2rem,5vw,4.8rem);font-weight:500;letter-spacing:-.06em;line-height:.98}
+.cabecera-seccion p{max-width:560px;margin:0;color:var(--texto-suave);font-size:18px}
+.manifiesto{max-width:1050px;margin-inline:auto;text-align:center}
+.manifiesto .cabecera-seccion{grid-template-columns:1fr;text-align:center;justify-items:center;gap:18px}
+.manifiesto-texto{margin:0;color:#65706d;font-size:clamp(2rem,4.2vw,4.4rem);letter-spacing:-.055em;line-height:1.08}
+.palabra{display:inline-block;transition:color .45s var(--transicion)}
+.palabra.activa{color:var(--texto)}
+.bento{display:grid;grid-template-columns:repeat(12,1fr);gap:16px}
+.tarjeta{position:relative;overflow:hidden;padding:clamp(22px,3vw,36px);border:1px solid var(--borde);border-radius:var(--radio);background:var(--superficie);backdrop-filter:blur(18px) saturate(140%);-webkit-backdrop-filter:blur(18px) saturate(140%);transition:border-color .4s var(--transicion),transform .4s var(--transicion)}
+.tarjeta::before{content:"";position:absolute;inset:0;pointer-events:none;opacity:0;background:radial-gradient(350px circle at var(--mx,50%) var(--my,50%),rgba(16,185,129,.12),transparent 65%);transition:opacity .4s}
+.tarjeta:hover{border-color:rgba(16,185,129,.5);transform:translateY(-3px)}
+.tarjeta:hover::before{opacity:1}
+.tarjeta>*{position:relative;z-index:1}
+.tarjeta h3{margin:15px 0 10px;font-size:clamp(1.35rem,2.4vw,2rem);font-weight:500;letter-spacing:-.04em}
+.tarjeta p{margin:0;color:var(--texto-suave);font-size:15px;line-height:1.65}
+.motor{grid-column:span 7;min-height:390px}
+.filtros{grid-column:span 5;min-height:390px}
+.stack{grid-column:span 5}
+.riesgo{grid-column:span 4}
+.registro{grid-column:span 3}
+.curva{display:block;width:100%;height:150px;margin-top:35px;overflow:visible}
+.curva path{fill:none;stroke:var(--esmeralda);stroke-width:2.5;stroke-linecap:round;stroke-dasharray:900;stroke-dashoffset:900;filter:drop-shadow(0 0 7px rgba(16,185,129,.75));transition:stroke-dashoffset 1.8s var(--transicion)}
+.tarjeta.visible .curva path{stroke-dashoffset:0}
+.ilustrativo{color:var(--texto-apagado);font:10px "JetBrains Mono",monospace}
+.barra-eficiencia{margin-top:28px}
+.fila-barra{display:grid;grid-template-columns:90px 1fr 42px;align-items:center;gap:10px;margin:18px 0;color:var(--texto-apagado);font:11px "JetBrains Mono",monospace}
+.pista-barra{height:6px;overflow:hidden;border-radius:99px;background:rgba(255,255,255,.08)}
+.relleno{width:0;height:100%;border-radius:inherit;background:var(--esmeralda);box-shadow:0 0 10px var(--esmeralda);transition:width 1.4s var(--transicion)}
+.relleno.lateral{background:var(--texto-apagado);box-shadow:none}
+.tarjeta.visible .relleno.tendencial{width:71%}
+.tarjeta.visible .relleno.lateral{width:18%}
+.pastillas{display:flex;flex-wrap:wrap;gap:9px;margin-top:24px}
+.pastilla{padding:8px 11px;border:1px solid var(--borde);border-radius:5px;color:var(--texto-suave);font:12px "JetBrains Mono",monospace;transition:border-color .25s,color .25s}
+.pastilla:hover{border-color:var(--cian);color:var(--cian)}
+.lista-minima{display:grid;gap:12px;margin:23px 0 0;padding:0;list-style:none;color:var(--texto-suave);font-size:14px}
+.lista-minima li::before{content:"＋";margin-right:8px;color:var(--esmeralda)}
+.linea-tiempo{position:relative;display:grid;grid-template-columns:repeat(5,1fr);gap:20px;padding-top:38px}
+.linea-tiempo::before,.progreso-tiempo{content:"";position:absolute;top:52px;right:5%;left:5%;height:1px;background:var(--borde-fuerte)}
+.progreso-tiempo{right:auto;width:0;background:var(--esmeralda);box-shadow:0 0 10px var(--esmeralda);transition:width .2s linear}
+.paso{position:relative;padding-top:43px}
+.paso::before{content:"";position:absolute;top:8px;left:0;width:14px;height:14px;border:1px solid var(--texto-apagado);border-radius:50%;background:var(--negro);transition:background .4s,border-color .4s,box-shadow .4s}
+.paso.activo::before{border-color:var(--esmeralda);background:var(--esmeralda);box-shadow:0 0 14px var(--esmeralda)}
+.numero{color:var(--esmeralda);font:12px "JetBrains Mono",monospace}
+.paso h3{margin:10px 0 7px;font-size:16px;font-weight:500}
+.paso p{margin:0;color:var(--texto-apagado);font-size:13px;line-height:1.55}
+.panel-demo{display:grid;grid-template-columns:minmax(0,1fr) 230px;overflow:hidden;border:1px solid var(--borde);border-radius:var(--radio);background:var(--superficie);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+.zona-grafico{min-width:0;padding:18px}
+#grafico-precio{display:block;width:100%;height:400px;border:1px solid rgba(255,255,255,.06);background:rgba(0,0,0,.22)}
+.controles-demo{display:flex;flex-direction:column;gap:20px;padding:26px 22px;border-left:1px solid var(--borde);background:rgba(5,6,7,.38)}
+.interruptor{position:relative;display:flex;align-items:center;justify-content:space-between;gap:12px;color:var(--texto-suave);font-size:13px;cursor:pointer}
+.interruptor input{position:absolute;opacity:0}
+.interruptor input:focus-visible+.conmutador{outline:2px solid var(--esmeralda);outline-offset:3px}
+.conmutador{position:relative;flex:0 0 auto;width:42px;height:23px;border-radius:99px;background:#27302e;transition:background .3s}
+.conmutador::after{content:"";position:absolute;top:3px;left:3px;width:17px;height:17px;border-radius:50%;background:var(--texto-apagado);transition:transform .3s var(--transicion),background .3s}
+.interruptor input:checked+.conmutador{background:rgba(16,185,129,.35)}
+.interruptor input:checked+.conmutador::after{transform:translateX(19px);background:var(--esmeralda)}
+.boton-secundario{min-height:44px;padding:9px 12px;border:1px solid var(--borde-fuerte);border-radius:5px;color:var(--texto);background:transparent;font-size:12px;transition:border-color .3s,background .3s}
+.boton-secundario:hover{border-color:var(--cian);background:rgba(6,182,212,.08)}
+.dato-demo{padding:13px 0;border-top:1px solid var(--borde)}
+.dato-demo span{display:block;color:var(--texto-apagado);font:10px "JetBrains Mono",monospace;text-transform:uppercase}
+.dato-demo strong{display:block;margin-top:3px;color:var(--esmeralda-clara);font:17px "JetBrains Mono",monospace}
+.aviso-demo{margin:20px 0 0;color:var(--texto-apagado);font-size:12px;line-height:1.5}
+.consola-viva{overflow:hidden;border:1px solid var(--borde);border-radius:var(--radio);background:rgba(3,5,5,.82);box-shadow:inset 0 0 40px rgba(16,185,129,.025)}
+.consola-cabecera{display:flex;align-items:center;justify-content:space-between;padding:13px 18px;border-bottom:1px solid var(--borde);color:var(--texto-apagado);font:11px "JetBrains Mono",monospace}
+.consola-cuerpo{height:280px;overflow:auto;padding:18px;font:12px/2 "JetBrains Mono",monospace}
+.registro-linea{color:var(--texto-apagado)}
+.registro-linea b{color:var(--cian);font-weight:400}
+.registro-linea span{color:var(--esmeralda-clara)}
+.proyecto-grid{display:grid;grid-template-columns:.75fr 1.25fr;gap:70px;align-items:start}
+.ficha{position:sticky;top:110px;padding:25px;border:1px solid var(--borde);border-radius:var(--radio);background:var(--superficie);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+.ficha dl{margin:25px 0 0}
+.ficha dt{margin-top:18px;color:var(--texto-apagado);font:10px "JetBrains Mono",monospace;text-transform:uppercase}
+.ficha dd{margin:2px 0 0;color:var(--texto-suave);font-size:14px}
+.acordeon{border-top:1px solid var(--borde)}
+.acordeon details{border-bottom:1px solid var(--borde)}
+.acordeon summary{display:flex;align-items:center;justify-content:space-between;gap:18px;min-height:72px;color:var(--texto);cursor:pointer;list-style:none;font-size:clamp(1rem,2vw,1.25rem)}
+.acordeon summary::-webkit-details-marker{display:none}
+.acordeon summary::after{content:"+";color:var(--esmeralda);font:24px "JetBrains Mono",monospace;transition:transform .35s var(--transicion)}
+.acordeon details[open] summary::after{transform:rotate(45deg)}
+.respuesta{max-width:680px;padding:0 45px 22px 0;color:var(--texto-suave);font-size:15px}
+.respuesta p{margin:0 0 10px}
+.aviso-riesgo{margin-top:48px;padding:18px 20px;border-left:1px solid var(--texto-apagado);color:var(--texto-apagado);font-size:12px;line-height:1.6}
+footer{padding:55px 0 calc(35px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--borde)}
+.pie-superior{display:flex;align-items:flex-start;justify-content:space-between;gap:30px}
+.pie-frase{max-width:330px;margin:20px 0 0;color:var(--texto-suave);font-size:14px}
+.pie-derecha{display:flex;align-items:flex-end;flex-direction:column;gap:15px;color:var(--texto-suave);font-size:14px;text-align:right}
+.correo{color:var(--esmeralda-clara)}
+.estado-pie{display:flex;align-items:center;gap:8px;color:var(--texto-apagado);font:11px "JetBrains Mono",monospace}
+.pie-inferior{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-top:70px;padding-top:18px;border-top:1px solid var(--borde);color:var(--texto-apagado);font:11px "JetBrains Mono",monospace}
+.revelar{opacity:0;transform:translateY(25px)}
+.revelar.visible{opacity:1;transform:translateY(0);transition:opacity .8s var(--transicion),transform .8s var(--transicion)}
+@media(max-width:900px){
+.navegacion{display:none}.menu-movil{display:block}.barra-interior{min-height:68px}.portal{margin-left:auto}
+.hero-grid,.cabecera-seccion,.proyecto-grid{grid-template-columns:1fr}
+.hora-panel{justify-self:start;margin-top:30px}.cabecera-seccion{gap:25px}
+.bento{grid-template-columns:repeat(2,1fr)}
+.motor,.filtros,.stack,.riesgo,.registro{grid-column:span 1}.motor{grid-column:span 2}
+.linea-tiempo{grid-template-columns:1fr;gap:28px;padding-left:28px}
+.linea-tiempo::before,.progreso-tiempo{top:0;bottom:0;left:7px;right:auto;width:1px;height:auto}
+.progreso-tiempo{bottom:auto;height:0}
+.paso{padding-top:0}.paso::before{top:3px;left:-28px}
+.panel-demo{grid-template-columns:1fr}
+.controles-demo{border-top:1px solid var(--borde);border-left:0}
+.ficha{position:static}}
+@media(max-width:560px){
+.contenedor{width:min(calc(100% - 28px),var(--contenedor))}
+.barra .portal{max-width:44px;overflow:hidden;padding:0 12px;font-size:0}
+.barra .portal::before{content:"▣";font-size:15px}
+h1{font-size:clamp(3.35rem,16vw,5rem)}
+section{padding:100px 0}
+.bento{display:flex;flex-direction:column}
+.tarjeta{min-height:auto}
+#grafico-precio{height:280px}
+.pie-superior,.pie-inferior{align-items:flex-start;flex-direction:column}
+.pie-derecha{align-items:flex-start;text-align:left}}
+@media(prefers-reduced-motion:reduce){
+*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+.arranque{display:none}.linea-titulo{clip-path:none;filter:none}
+.revelar,.estado,.hora-panel{opacity:1;transform:none}.cinta-contenido{animation:none}
+.relleno.tendencial{width:71%}.relleno.lateral{width:18%}.curva path{stroke-dashoffset:0}}
+</style>
+</head>
+<body>
+<div class="arranque" id="arranque" aria-hidden="true">
+  <div class="arranque-consola">
+    <p>axiom.quant / inicializando entorno…</p>
+    <p>axiom.quant / validando acceso…</p>
+    <p>axiom.quant / entorno listo_</p>
+  </div>
+</div>
+<canvas class="webgl-fondo" id="webgl-fondo" aria-hidden="true"></canvas>
+<div class="velo-fondo" aria-hidden="true"></div>
+
+<header class="barra" id="barra">
+  <div class="contenedor barra-interior">
+    <a class="marca" href="#inicio" aria-label="Axiom Quant, inicio">
+      <svg viewBox="0 0 40 40" fill="none" aria-hidden="true"><path d="M20 3 35 11.5v17L20 37 5 28.5v-17L20 3Z" stroke="currentColor" stroke-width="1.8"/><path d="m12 25 8-15 8 15M15 20h10" stroke="currentColor" stroke-width="1.8"/></svg>
+      AXIOM QUANT
+    </a>
+    <nav class="navegacion" id="navegacion" aria-label="Navegación principal">
+      <a href="#infraestructura">Infraestructura</a>
+      <a href="#sistema">Sistema</a>
+      <a href="#proyecto">El proyecto</a>
+      <a href="#contacto">Contacto</a>
+    </nav>
+    <button class="portal" id="portal" type="button" aria-describedby="mensaje-portal">
+      <span aria-hidden="true">▣</span> Portal de clientes (bloqueado)
+      <span class="portal-denegado" id="mensaje-portal" aria-live="polite">Acceso denegado</span>
+    </button>
+    <button class="menu-movil" type="button" aria-label="Abrir menú" aria-expanded="false" id="menu-movil">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+    </button>
+  </div>
+</header>
+<a class="enlace-saltar" href="#contenido">Saltar al contenido</a>
+
+<main id="contenido">
+  <section class="hero" id="inicio">
+    <div class="contenedor hero-grid">
+      <div>
+        <div class="estado" id="estado"><span class="punto"></span>EN VIVO: entorno de pruebas en tiempo real</div>
+        <h1 aria-label="Arquitectura cuantitativa de trading">
+          <span class="linea-titulo">Arquitectura</span>
+          <span class="linea-titulo">cuantitativa</span>
+          <span class="linea-titulo">de trading</span>
+        </h1>
+        <p class="subtitulo"><span id="texto-escritura"></span><span class="cursor-escritura" aria-hidden="true"></span></p>
+        <div class="pista">Desplazar para explorar</div>
+      </div>
+      <aside class="hora-panel" id="hora-panel">
+        <span class="etiqueta">Referencia temporal</span>
+        <time class="hora mono" id="hora-utc">00:00:00 UTC</time>
+        <span class="texto-apagado mono" style="font-size:10px">Entorno: pruebas en tiempo real</span>
+      </aside>
+    </div>
+  </section>
+
+  <div class="cinta" title="Datos simulados">
+    <div class="cinta-contenido mono" aria-label="Datos simulados">
+      <div class="dato-cinta">EFIC.SISTEMA <b class="ef-cinta">0,84</b></div>
+      <div class="dato-cinta">VOLATILIDAD <b>BAJA</b></div>
+      <div class="dato-cinta">TOPE.RIESGO <b>2,5 %</b></div>
+      <div class="dato-cinta">CAÍDA <b>GESTIONADA</b></div>
+      <div class="dato-cinta">DATOS <b>SIMULADOS</b></div>
+      <div class="dato-cinta">EJECUCIÓN <b>CONTROLADA</b></div>
+      <div class="dato-cinta">EFIC.SISTEMA <b class="ef-cinta">0,84</b></div>
+      <div class="dato-cinta">VOLATILIDAD <b>BAJA</b></div>
+      <div class="dato-cinta">TOPE.RIESGO <b>2,5 %</b></div>
+      <div class="dato-cinta">CAÍDA <b>GESTIONADA</b></div>
+      <div class="dato-cinta">DATOS <b>SIMULADOS</b></div>
+      <div class="dato-cinta">EJECUCIÓN <b>CONTROLADA</b></div>
+    </div>
+  </div>
+
+  <section id="manifiesto">
+    <div class="contenedor manifiesto revelar">
+      <div class="cabecera-seccion">
+        <span class="etiqueta">01 / Principio operativo</span>
+        <p>La disciplina no consiste en operar más. Consiste en reconocer cuándo la estructura del mercado justifica asumir exposición.</p>
+      </div>
+      <p class="manifiesto-texto" id="manifiesto-texto"></p>
+    </div>
+  </section>
+
+  <section id="infraestructura">
+    <div class="contenedor">
+      <div class="cabecera-seccion revelar">
+        <span class="etiqueta">02 / Infraestructura</span>
+        <div>
+          <h2>Una arquitectura para dejar correr lo que funciona.</h2>
+          <p style="margin-top:24px">Cada componente tiene una función concreta: detectar dirección, descartar ruido y limitar la exposición antes de enviar una orden.</p>
+        </div>
+      </div>
+      <div class="bento">
+        <article class="tarjeta motor revelar">
+          <span class="etiqueta">Motor principal</span>
+          <h3>Motor Direccional</h3>
+          <p>Captura tendencias sostenidas sin intentar predecir techos ni suelos. Las pérdidas se mantienen acotadas; las ganancias se dejan correr cuando la estructura permanece intacta.</p>
+          <svg class="curva" viewBox="0 0 800 150" preserveAspectRatio="none" aria-label="Curva de retorno ilustrativa"><path d="M0 126 C42 130 56 116 88 122 S141 112 166 119 S214 126 240 105 S275 95 302 101 S344 85 370 91 S397 75 424 84 S455 64 488 70 S535 49 562 59 S598 40 632 48 S673 25 706 33 S752 14 800 18"/></svg>
+          <span class="ilustrativo">Curva de retorno ilustrativa · no representa resultados reales</span>
+        </article>
+        <article class="tarjeta filtros revelar">
+          <span class="etiqueta">Filtro de entrada</span>
+          <h3>Filtros de Amplitud</h3>
+          <p>Descartan mercados laterales antes de exponer capital. El ratio de eficiencia separa movimiento direccional de ruido.</p>
+          <div class="barra-eficiencia">
+            <div class="fila-barra"><span>Tendencial</span><div class="pista-barra"><div class="relleno tendencial"></div></div><b>0,71</b></div>
+            <div class="fila-barra"><span>Lateral</span><div class="pista-barra"><div class="relleno lateral"></div></div><b>0,18</b></div>
+          </div>
+          <span class="ilustrativo">Valores ilustrativos</span>
+        </article>
+        <article class="tarjeta stack revelar">
+          <span class="etiqueta">Infraestructura privada</span>
+          <h3>Stack tecnológico</h3>
+          <p>Herramientas simples, observables y bajo control directo.</p>
+          <div class="pastillas"><span class="pastilla">Python</span><span class="pastilla">FastAPI</span><span class="pastilla">WebSockets</span><span class="pastilla">VPS</span><span class="pastilla">SQLite</span></div>
+        </article>
+        <article class="tarjeta riesgo revelar">
+          <span class="etiqueta">Exposición</span>
+          <h3>Gestión de riesgo</h3>
+          <ul class="lista-minima"><li>Tope definido por operación</li><li>Tamaño según volatilidad</li><li>Recorte automático de exposición</li></ul>
+        </article>
+        <article class="tarjeta registro revelar">
+          <span class="etiqueta">Trazabilidad</span>
+          <h3>Registro de decisiones</h3>
+          <p>Cada operación y cada decisión del sistema queda guardada y es auditable.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section id="sistema">
+    <div class="contenedor">
+      <div class="cabecera-seccion revelar">
+        <span class="etiqueta">03 / El sistema</span>
+        <div><h2>De los datos a la decisión.</h2><p style="margin-top:24px">Un recorrido determinista. Sin intuición añadida en el último momento.</p></div>
+      </div>
+      <div class="linea-tiempo revelar" id="linea-tiempo">
+        <div class="progreso-tiempo" id="progreso-tiempo"></div>
+        <article class="paso"><span class="numero">01</span><h3>Datos de mercado</h3><p>Flujo en tiempo real por WebSockets.</p></article>
+        <article class="paso"><span class="numero">02</span><h3>Filtro de amplitud</h3><p>¿Hay dirección o hay ruido?</p></article>
+        <article class="paso"><span class="numero">03</span><h3>Señal direccional</h3><p>¿Existe una tendencia sostenida?</p></article>
+        <article class="paso"><span class="numero">04</span><h3>Dimensionado de riesgo</h3><p>Tamaño según volatilidad y tope por operación.</p></article>
+        <article class="paso"><span class="numero">05</span><h3>Ejecución y registro</h3><p>Orden enviada y decisión archivada.</p></article>
+      </div>
+    </div>
+  </section>
+
+  <section id="demostracion">
+    <div class="contenedor">
+      <div class="cabecera-seccion revelar">
+        <span class="etiqueta">04 / Demostración</span>
+        <div><h2>La amplitud cambia la decisión.</h2><p style="margin-top:24px">Una representación didáctica de cómo el sistema distingue una fase lateral de una tendencia sostenida.</p></div>
+      </div>
+      <div class="panel-demo revelar">
+        <div class="zona-grafico">
+          <canvas id="grafico-precio" aria-label="Gráfico de una serie de precios sintética"></canvas>
+          <p class="aviso-demo">Simulación didáctica con datos sintéticos. No representa rentabilidad real ni resultados de inversión.</p>
+        </div>
+        <aside class="controles-demo">
+          <label class="interruptor"><span>Filtro de amplitud</span><input type="checkbox" id="filtro" checked><span class="conmutador" aria-hidden="true"></span></label>
+          <button class="boton-secundario" id="nueva-serie" type="button">Generar otra serie</button>
+          <div class="dato-demo"><span>Ratio de eficiencia</span><strong id="ratio-demo">0,71</strong></div>
+          <div class="dato-demo"><span>Estado del sistema</span><strong id="estado-demo">Selectivo</strong></div>
+          <div class="dato-demo"><span>Entradas descartadas</span><strong id="descartadas-demo">08</strong></div>
+        </aside>
+      </div>
+    </div>
+  </section>
+
+  <section id="estado-sistema">
+    <div class="contenedor">
+      <div class="cabecera-seccion revelar">
+        <span class="etiqueta">05 / Estado del sistema</span>
+        <div><h2>Un registro de cada decisión.</h2><p style="margin-top:24px">La observabilidad no es una capa posterior. Forma parte del sistema.</p></div>
+      </div>
+      <div class="consola-viva revelar">
+        <div class="consola-cabecera"><span>axiom / registro de actividad</span><button class="boton-secundario" id="pausar-consola" type="button" style="min-height:32px;padding:4px 9px">Pausar</button></div>
+        <div class="consola-cuerpo" id="consola-cuerpo" aria-label="Registro simulado de actividad"></div>
+      </div>
+      <p class="ilustrativo" style="margin-top:12px">Registro simulado · las marcas temporales y mensajes son ilustrativos</p>
+    </div>
+  </section>
+
+  <section id="proyecto">
+    <div class="contenedor">
+      <div class="cabecera-seccion revelar">
+        <span class="etiqueta">06 / El proyecto</span>
+        <div><h2>Privado por diseño.</h2><p style="margin-top:24px">Una firma discreta, sin captación de capital externo y sin presencia comercial.</p></div>
+      </div>
+      <div class="proyecto-grid">
+        <aside class="ficha revelar">
+          <span class="etiqueta">Ficha operativa</span>
+          <dl>
+            <dt>Naturaleza</dt><dd>Firma privada y discreta</dd>
+            <dt>Mercado</dt><dd>Criptoactivos</dd>
+            <dt>Estrategia</dt><dd>Seguimiento de tendencia sistemático</dd>
+            <dt>Fase actual</dt><dd>Pruebas en tiempo real</dd>
+            <dt>Capital</dt><dd>Propietario</dd>
+            <dt>Inversión externa</dt><dd>No admitida</dd>
+          </dl>
+        </aside>
+        <div class="acordeon revelar">
+          <details><summary>¿Qué es Axiom Quant?</summary><div class="respuesta"><p>Axiom Quant es una firma privada de inversión cuantitativa y algorítmica en criptoactivos.</p><p>Su actividad se centra en operar capital propietario mediante un sistema sistemático de seguimiento de tendencia.</p></div></details>
+          <details><summary>¿Cómo decide cuándo operar?</summary><div class="respuesta"><p>El sistema analiza si existe una estructura direccional suficientemente clara y sostenida.</p><p>Si el mercado presenta ruido o comportamiento lateral, el filtro descarta la exposición.</p></div></details>
+          <details><summary>¿Qué significa «asimetría de retornos»?</summary><div class="respuesta"><p>Significa aceptar pérdidas pequeñas y previamente limitadas cuando una señal falla.</p><p>Cuando una tendencia se mantiene, la posición puede permanecer abierta para capturar una parte mayor del movimiento.</p></div></details>
+          <details><summary>¿Cómo se gestiona el riesgo?</summary><div class="respuesta"><p>El riesgo máximo por operación se define antes de abrir la posición.</p><p>El tamaño se ajusta a la volatilidad y la caída acumulada se monitoriza para reducir exposición cuando corresponde.</p></div></details>
+          <details><summary>¿Qué son las pruebas en tiempo real y por qué importan?</summary><div class="respuesta"><p>Son pruebas en las que el sistema opera con datos que no existían cuando se diseñó el modelo.</p><p>Permiten observar su comportamiento bajo condiciones nuevas antes de plantear una ampliación de capital.</p></div></details>
+          <details><summary>¿Por qué no se acepta inversión externa?</summary><div class="respuesta"><p>El capital exclusivamente propietario mantiene alineados el diseño del sistema, la ejecución y la toma de decisiones.</p><p>Axiom Quant no capta clientes ni ofrece productos de inversión al público.</p></div></details>
+          <details><summary>¿Cómo está construida la infraestructura?</summary><div class="respuesta"><p>La infraestructura utiliza Python, FastAPI, WebSockets, servidores privados VPS y SQLite.</p><p>Los componentes se mantienen bajo control directo para facilitar la observación, el registro y la ejecución.</p></div></details>
+          <div class="aviso-riesgo">La operativa con criptoactivos conlleva un riesgo elevado de pérdida de capital. Los resultados pasados o simulados no garantizan resultados futuros. Este sitio es informativo y no constituye oferta ni asesoramiento de inversión.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer id="contacto">
+  <div class="contenedor">
+    <div class="pie-superior">
+      <div>
+        <a class="marca" href="#inicio">
+          <svg viewBox="0 0 40 40" fill="none" aria-hidden="true"><path d="M20 3 35 11.5v17L20 37 5 28.5v-17L20 3Z" stroke="currentColor" stroke-width="1.8"/><path d="m12 25 8-15 8 15M15 20h10" stroke="currentColor" stroke-width="1.8"/></svg>
+          AXIOM QUANT
+        </a>
+        <p class="pie-frase">Capital propietario exclusivo. No se acepta inversión externa.</p>
+      </div>
+      <div class="pie-derecha">
+        <a class="correo" id="correo" href="#" aria-label="Enviar correo a Axiom Quant"></a>
+        <span class="estado-pie"><span class="punto"></span> Sistemas operativos (simulado)</span>
+        <a class="enlace-subrayado" href="#inicio">Volver arriba ↑</a>
+      </div>
+    </div>
+    <div class="pie-inferior"><span>© <span id="anio"></span> Axiom Quant. Todos los derechos reservados.</span><span class="mono">AQ / 001</span></div>
+  </div>
+</footer>
+
+<script>
+(() => {
+"use strict";
+const reducido = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const $ = (s, p = document) => p.querySelector(s);
+const $$ = (s, p = document) => [...p.querySelectorAll(s)];
+
+/* Correo montado por fragmentos */
+const correo = ["con","tact"].join("") + String.fromCharCode(64) + ["axiom","quant","es"].join(".");
+const enlaceCorreo = $("#correo");
+enlaceCorreo.textContent = correo;
+enlaceCorreo.href = "mailto:" + correo;
+$("#anio").textContent = new Date().getFullYear();
+
+/* Manifiesto: palabras */
+const textoManifiesto = "Operar solo cuando la estructura lo justifica. El silencio también es una posición. El control de los datos y de la ejecución es una ventaja.";
+$("#manifiesto-texto").innerHTML = textoManifiesto.split(" ").map(p => `<span class="palabra">${p}</span> `).join("");
+
+/* Secuencia inicial */
+const arranque = $("#arranque");
+const lineas = $$(".linea-titulo");
+const textoEscritura = $("#texto-escritura");
+const frase = "Modelos asimétricos. Gestión de riesgo dinámica. Cero ruido.";
+
+function iniciarHero() {
+  $("#estado").classList.add("visible");
+  $("#hora-panel").classList.add("visible");
+  if (reducido) { lineas.forEach(l => l.classList.add("revelada")); textoEscritura.textContent = frase; return; }
+  lineas.forEach((l, i) => setTimeout(() => l.classList.add("revelada"), 650 + i * 500));
+  let i = 0;
+  setTimeout(function escribir() {
+    if (i < frase.length) { textoEscritura.textContent += frase[i++]; setTimeout(escribir, frase[i - 1] === "." ? 190 : 28); }
+  }, 2100);
+}
+
+let yaVisto = false;
+try { yaVisto = !!sessionStorage.getItem("axiom-arranque"); sessionStorage.setItem("axiom-arranque", "1"); } catch (e) {}
+if (!yaVisto && !reducido) {
+  setTimeout(() => { arranque.classList.add("oculto"); iniciarHero(); }, 1050);
+} else {
+  arranque.classList.add("oculto"); iniciarHero();
+}
+
+/* Hora UTC */
+const actualizarHora = () => { $("#hora-utc").textContent = new Date().toISOString().slice(11, 19) + " UTC"; };
+actualizarHora(); setInterval(actualizarHora, 1000);
+
+/* Barra */
+const barra = $("#barra");
+addEventListener("scroll", () => barra.classList.toggle("scrolled", scrollY > 30), { passive: true });
+
+$("#portal").addEventListener("click", e => {
+  e.preventDefault();
+  const b = e.currentTarget, m = $("#mensaje-portal");
+  b.classList.remove("sacudir"); void b.offsetWidth; b.classList.add("sacudir");
+  m.classList.add("visible"); setTimeout(() => m.classList.remove("visible"), 1300);
+});
+
+/* Tarjetas: luz que sigue al ratón */
+$$(".tarjeta").forEach(t => t.addEventListener("pointermove", e => {
+  if (e.pointerType === "touch") return;
+  const r = t.getBoundingClientRect();
+  t.style.setProperty("--mx", `${e.clientX - r.left}px`);
+  t.style.setProperty("--my", `${e.clientY - r.top}px`);
+}));
+
+/* Revelado al entrar en pantalla */
+const revelar = $$(".revelar");
+if ("IntersectionObserver" in window && !reducido) {
+  const obs = new IntersectionObserver((en, o) => en.forEach(x => { if (x.isIntersecting) { x.target.classList.add("visible"); o.unobserve(x.target); } }), { threshold: .12 });
+  revelar.forEach(el => obs.observe(el));
+} else revelar.forEach(el => el.classList.add("visible"));
+
+/* Manifiesto */
+const palabras = $$(".palabra");
+if (!reducido && "IntersectionObserver" in window) {
+  const o = new IntersectionObserver((en, ob) => {
+    if (en.some(e => e.isIntersecting)) { palabras.forEach((p, i) => setTimeout(() => p.classList.add("activa"), i * 90)); ob.disconnect(); }
+  }, { threshold: .3 });
+  o.observe($("#manifiesto-texto"));
+} else palabras.forEach(p => p.classList.add("activa"));
+
+/* Menú móvil */
+$("#menu-movil").addEventListener("click", e => {
+  const b = e.currentTarget, nav = $("#navegacion");
+  const abierto = b.getAttribute("aria-expanded") === "true";
+  b.setAttribute("aria-expanded", String(!abierto));
+  nav.removeAttribute("style");
+  if (!abierto) Object.assign(nav.style, { display: "flex", position: "absolute", top: "68px", right: "14px", left: "14px", padding: "18px", flexDirection: "column", alignItems: "flex-start", border: "1px solid var(--borde)", borderRadius: "10px", background: "rgba(5,6,7,.96)" });
+});
+$$("#navegacion a").forEach(a => a.addEventListener("click", () => { $("#navegacion").removeAttribute("style"); $("#menu-movil").setAttribute("aria-expanded", "false"); }));
+
+/* Valores simulados de la cinta */
+setInterval(() => { const v = (0.80 + Math.random() * .08).toFixed(2).replace(".", ","); $$(".ef-cinta").forEach(el => el.textContent = v); }, 3500);
+
+/* Línea de tiempo */
+const lt = $("#linea-tiempo"), pasos = $$(".paso", lt), prog = $("#progreso-tiempo");
+function actualizarTiempo() {
+  const r = lt.getBoundingClientRect();
+  const h = Math.max(0, Math.min(1, (innerHeight * .65 - r.top) / r.height));
+  const vertical = innerWidth <= 900;
+  prog.style.width = vertical ? "1px" : `${h * 90}%`;
+  prog.style.height = vertical ? `${h * 100}%` : "1px";
+  pasos.forEach((p, i) => p.classList.toggle("activo", h > i / pasos.length + .06));
+}
+addEventListener("scroll", actualizarTiempo, { passive: true }); actualizarTiempo();
+
+/* Demostración sintética */
+const canvas = $("#grafico-precio"), ctx = canvas.getContext("2d");
+let semilla = Math.random() * 1000, serie = [], zonas = [];
+const alea = v => { const x = Math.sin(v * 12.9898 + semilla) * 43758.5453; return x - Math.floor(x); };
+
+function generarSerie() {
+  serie = []; zonas = []; let precio = 100;
+  for (let i = 0; i < 180; i++) {
+    let c;
+    if (i < 42) c = (alea(i) - .5) * 1.7;
+    else if (i < 90) c = .58 + (alea(i) - .5) * .85;
+    else if (i < 124) c = (alea(i) - .5) * 1.5;
+    else c = -.42 + (alea(i) - .5) * .8;
+    precio += c; serie.push(precio);
+    zonas.push(i < 42 || (i >= 90 && i < 124) ? "lateral" : "tendencia");
+  }
+  dibujarSerie();
+}
+function ajustarCanvas() {
+  const dpr = Math.min(devicePixelRatio || 1, 2), r = canvas.getBoundingClientRect();
+  canvas.width = r.width * dpr; canvas.height = r.height * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0); dibujarSerie();
+}
+function dibujarSerie() {
+  if (!serie.length) return;
+  const W = canvas.clientWidth, H = canvas.clientHeight;
+  ctx.clearRect(0, 0, W, H);
+  ctx.strokeStyle = "rgba(255,255,255,.055)"; ctx.lineWidth = 1;
+  for (let i = 1; i < 6; i++) { const y = H / 6 * i; ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+  const min = Math.min(...serie) - 3, max = Math.max(...serie) + 3;
+  const X = i => i * W / (serie.length - 1);
+  const Y = v => H - ((v - min) / (max - min)) * (H - 24) - 12;
+  const filtroActivo = $("#filtro").checked;
+
+  if (filtroActivo) {
+    for (let i = 0; i < zonas.length;) {
+      if (zonas[i] === "lateral") {
+        let fin = i; while (fin < zonas.length && zonas[fin] === "lateral") fin++;
+        ctx.fillStyle = "rgba(125,135,132,.09)"; ctx.fillRect(X(i), 0, X(Math.min(fin, serie.length - 1)) - X(i), H);
+        i = fin;
+      } else i++;
+    }
+  }
+  ctx.beginPath(); serie.forEach((v, i) => i ? ctx.lineTo(X(i), Y(v)) : ctx.moveTo(X(i), Y(v)));
+  ctx.strokeStyle = "#7c8985"; ctx.lineWidth = 1.3; ctx.stroke();
+
+  ctx.beginPath(); let abierto = false;
+  serie.forEach((v, i) => {
+    if (filtroActivo && zonas[i] !== "tendencia") { abierto = false; return; }
+    if (!abierto) { ctx.moveTo(X(i), Y(v)); abierto = true; } else ctx.lineTo(X(i), Y(v));
+  });
+  ctx.strokeStyle = filtroActivo ? "#10b981" : "#ef6f6f"; ctx.lineWidth = 3;
+  ctx.shadowColor = filtroActivo ? "rgba(16,185,129,.65)" : "rgba(239,111,111,.45)"; ctx.shadowBlur = 8;
+  ctx.stroke(); ctx.shadowBlur = 0;
+
+  for (let i = 1; i < serie.length - 1; i++) {
+    if (zonas[i] === "tendencia" && zonas[i - 1] !== "tendencia") { ctx.fillStyle = "#5ee7b7"; ctx.beginPath(); ctx.arc(X(i), Y(serie[i]), 4, 0, 6.2832); ctx.fill(); }
+    if (!filtroActivo && zonas[i] === "lateral" && i % 10 === 0) { ctx.fillStyle = "#ef6f6f"; ctx.beginPath(); ctx.arc(X(i), Y(serie[i]), 3, 0, 6.2832); ctx.fill(); }
+  }
+  $("#ratio-demo").textContent = filtroActivo ? "0,71" : "0,34";
+  $("#estado-demo").textContent = filtroActivo ? "Selectivo" : "Expuesto";
+  $("#descartadas-demo").textContent = filtroActivo ? "08" : "00";
+}
+$("#filtro").addEventListener("change", dibujarSerie);
+$("#nueva-serie").addEventListener("click", () => { semilla = Math.random() * 1000; generarSerie(); });
+addEventListener("resize", ajustarCanvas);
+generarSerie(); requestAnimationFrame(ajustarCanvas);
+
+/* Consola de actividad */
+const mensajes = ["filtro de amplitud: mercado lateral, sin exposición","tendencia detectada, tamaño ajustado a la volatilidad","caída acumulada dentro de umbrales","datos recibidos por WebSockets","señal direccional confirmada","orden no enviada: eficiencia insuficiente","decisión archivada correctamente"];
+let idx = 0, pausada = false;
+const cuerpo = $("#consola-cuerpo");
+function añadirRegistro() {
+  if (pausada) return;
+  const l = document.createElement("div"); l.className = "registro-linea";
+  l.innerHTML = `<b>${new Date().toISOString().slice(11, 19)} UTC</b> <span>›</span> ${mensajes[idx++ % mensajes.length]}`;
+  cuerpo.appendChild(l); cuerpo.scrollTop = cuerpo.scrollHeight;
+  if (cuerpo.children.length > 12) cuerpo.firstElementChild.remove();
+}
+for (let i = 0; i < 5; i++) añadirRegistro();
+setInterval(añadirRegistro, 2100);
+$("#pausar-consola").addEventListener("click", e => { pausada = !pausada; e.currentTarget.textContent = pausada ? "Continuar" : "Pausar"; });
+
+/* Fondo WebGL: terreno con curvas de nivel, nodos y conexiones */
+function iniciarWebGL() {
+  const lienzo = $("#webgl-fondo");
+  if (reducido || !window.THREE) { lienzo.style.display = "none"; return; }
+  let renderer;
+  try { renderer = new THREE.WebGLRenderer({ canvas: lienzo, alpha: true, antialias: true }); }
+  catch (e) { lienzo.style.display = "none"; return; }
+  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+  renderer.setSize(innerWidth, innerHeight, false);
+  const escena = new THREE.Scene();
+  escena.fog = new THREE.FogExp2(0x050607, .035);
+  const camara = new THREE.PerspectiveCamera(52, innerWidth / innerHeight, .1, 100);
+  camara.position.set(0, 2.2, 10);
+  const grupo = new THREE.Group(); escena.add(grupo);
+
+  const mat = new THREE.ShaderMaterial({
+    transparent: true, side: THREE.DoubleSide, uniforms: { tiempo: { value: 0 } },
+    vertexShader: `
+      uniform float tiempo; varying vec3 posicion;
+      void main(){ vec3 p = position;
+        p.z += sin(p.x*.55 + tiempo*.22)*.22 + cos(p.y*.7 + tiempo*.17)*.18;
+        posicion = p; gl_Position = projectionMatrix * modelViewMatrix * vec4(p,1.0); }`,
+    fragmentShader: `
+      varying vec3 posicion;
+      void main(){ float n = sin(posicion.x*.95 + posicion.y*.7)*.5 + .5;
+        float curvas = smoothstep(.91,.96,fract(n*7.0));
+        float principal = smoothstep(.96,.985,fract(n*2.0));
+        vec3 color = mix(vec3(.02,.22,.17), vec3(.06,.55,.39), curvas + principal);
+        gl_FragColor = vec4(color, curvas*.42 + principal*.32); }`
+  });
+  const terreno = new THREE.Mesh(new THREE.PlaneGeometry(25, 15, 70, 45), mat);
+  terreno.rotation.x = -Math.PI / 2.4; terreno.position.set(0, -2.5, -3); grupo.add(terreno);
+
+  const N = innerWidth < 700 ? 65 : 105, pos = new Float32Array(N * 3), nodos = [];
+  for (let i = 0; i < N; i++) {
+    const n = { x: (Math.random() - .5) * 16, y: (Math.random() - .5) * 7, z: (Math.random() - .5) * 5 - 1, vx: (Math.random() - .5) * .0018, vy: (Math.random() - .5) * .0018 };
+    nodos.push(n); pos[i * 3] = n.x; pos[i * 3 + 1] = n.y; pos[i * 3 + 2] = n.z;
+  }
+  const pg = new THREE.BufferGeometry(); pg.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+  grupo.add(new THREE.Points(pg, new THREE.PointsMaterial({ color: 0x10b981, size: innerWidth < 700 ? .045 : .06, transparent: true, opacity: .8, blending: THREE.AdditiveBlending })));
+
+  const con = [];
+  for (let i = 0; i < N; i++) for (let j = i + 1; j < N; j++) {
+    const dx = nodos[i].x - nodos[j].x, dy = nodos[i].y - nodos[j].y;
+    if (Math.sqrt(dx * dx + dy * dy) < 2.2) con.push(i, j);
+  }
+  const lg = new THREE.BufferGeometry(), lp = new Float32Array(con.length * 3);
+  lg.setAttribute("position", new THREE.BufferAttribute(lp, 3));
+  grupo.add(new THREE.LineSegments(lg, new THREE.LineBasicMaterial({ color: 0x06b6d4, transparent: true, opacity: .16, blending: THREE.AdditiveBlending })));
+
+  const raton = { x: 0, y: 0 };
+  addEventListener("pointermove", e => { raton.x = (e.clientX / innerWidth - .5) * 1.4; raton.y = (e.clientY / innerHeight - .5) * 1.4; }, { passive: true });
+
+  let visible = true;
+  new IntersectionObserver(en => { visible = en[0].isIntersecting; }).observe($("#inicio"));
+
+  let t = 0;
+  (function animar() {
+    requestAnimationFrame(animar);
+    if (!visible || document.hidden) return;
+    t += .008; mat.uniforms.tiempo.value = t;
+    grupo.rotation.y += (raton.x * .18 - grupo.rotation.y) * .025;
+    grupo.rotation.x += (raton.y * .1 - grupo.rotation.x) * .025;
+    nodos.forEach((n, i) => {
+      n.x += n.vx; n.y += n.vy;
+      if (Math.abs(n.x) > 8) n.vx *= -1;
+      if (Math.abs(n.y) > 3.5) n.vy *= -1;
+      pos[i * 3] = n.x; pos[i * 3 + 1] = n.y;
+    });
+    pg.attributes.position.needsUpdate = true;
+    let k = 0;
+    for (let i = 0; i < con.length; i += 2) {
+      const a = nodos[con[i]], b = nodos[con[i + 1]];
+      lp[k++] = a.x; lp[k++] = a.y; lp[k++] = a.z; lp[k++] = b.x; lp[k++] = b.y; lp[k++] = b.z;
+    }
+    lg.attributes.position.needsUpdate = true;
+    renderer.render(escena, camara);
+  })();
+
+  addEventListener("resize", () => {
+    camara.aspect = innerWidth / innerHeight; camara.updateProjectionMatrix();
+    renderer.setSize(innerWidth, innerHeight, false);
+  });
+}
+iniciarWebGL();
+})();
+</script>
+</body>
+</html>
